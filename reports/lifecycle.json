@@ -1,0 +1,180 @@
+{
+  "runtime": "v22.23.5",
+  "method": "Official startEnv and scoreExport, actual main.ts child process, two fresh sequential runs",
+  "replayIdentical": true,
+  "stateBytes": 3390,
+  "runs": [
+    {
+      "pass": 1,
+      "exitCode": 0,
+      "registered": true,
+      "bootOk": true,
+      "passed": 120,
+      "total": 120,
+      "scores": {
+        "score": 970,
+        "feature": 600,
+        "agent": 200,
+        "perf": 170,
+        "perf_p50_us": 304792,
+        "working": 1
+      },
+      "perf": {
+        "calibrated": true,
+        "notes": [],
+        "perf_p50_us": 304792,
+        "points": {
+          "clone": 37,
+          "push": 44,
+          "read": 45,
+          "write": 44
+        },
+        "points_total": 170,
+        "tiers": {
+          "clone": 2,
+          "push": 3,
+          "read": 3,
+          "write": 3
+        },
+        "version": 1,
+        "workloads": [
+          {
+            "name": "push",
+            "ops": 200,
+            "p50_ms": 567.901,
+            "p99_ms": 711.579,
+            "points": 44,
+            "rounds": [
+              500.214,
+              567.901,
+              711.579
+            ]
+          },
+          {
+            "name": "clone",
+            "ops": 50,
+            "p50_ms": 136.25,
+            "p99_ms": 161.582,
+            "points": 37,
+            "rounds": [
+              161.582,
+              136.25,
+              133.717
+            ]
+          },
+          {
+            "name": "read",
+            "ops": 2000,
+            "p50_ms": 930.608,
+            "p99_ms": 1174.877,
+            "points": 45,
+            "rounds": [
+              1174.877,
+              930.608,
+              870.201
+            ]
+          },
+          {
+            "name": "write",
+            "ops": 200,
+            "p50_ms": 119.85,
+            "p99_ms": 136.441,
+            "points": 44,
+            "rounds": [
+              116.989,
+              136.441,
+              119.85
+            ]
+          }
+        ]
+      },
+      "stateSha256": "a0e98d49854b961230227867235c8615858e006db3763f341ac6154af1445590"
+    },
+    {
+      "pass": 2,
+      "exitCode": 0,
+      "registered": true,
+      "bootOk": true,
+      "passed": 120,
+      "total": 120,
+      "scores": {
+        "score": 972,
+        "feature": 600,
+        "agent": 200,
+        "perf": 172,
+        "perf_p50_us": 299526,
+        "working": 1
+      },
+      "perf": {
+        "calibrated": true,
+        "notes": [],
+        "perf_p50_us": 299526,
+        "points": {
+          "clone": 39,
+          "push": 44,
+          "read": 46,
+          "write": 43
+        },
+        "points_total": 172,
+        "tiers": {
+          "clone": 3,
+          "push": 3,
+          "read": 3,
+          "write": 3
+        },
+        "version": 1,
+        "workloads": [
+          {
+            "name": "push",
+            "ops": 200,
+            "p50_ms": 557.933,
+            "p99_ms": 708.126,
+            "points": 44,
+            "rounds": [
+              531.867,
+              557.933,
+              708.126
+            ]
+          },
+          {
+            "name": "clone",
+            "ops": 50,
+            "p50_ms": 125.641,
+            "p99_ms": 125.99,
+            "points": 39,
+            "rounds": [
+              125.641,
+              125.99,
+              116.665
+            ]
+          },
+          {
+            "name": "read",
+            "ops": 2000,
+            "p50_ms": 884.953,
+            "p99_ms": 1074.8,
+            "points": 46,
+            "rounds": [
+              1074.8,
+              884.953,
+              853.331
+            ]
+          },
+          {
+            "name": "write",
+            "ops": 200,
+            "p50_ms": 129.749,
+            "p99_ms": 146.229,
+            "points": 43,
+            "rounds": [
+              129.749,
+              146.229,
+              114.744
+            ]
+          }
+        ]
+      },
+      "stateSha256": "a0e98d49854b961230227867235c8615858e006db3763f341ac6154af1445590"
+    }
+  ]
+}
