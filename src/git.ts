@@ -76,11 +76,20 @@ export function gitRequest(repo, service, advertise, v2, body) {
   const head = `refs/heads/${repo.default_branch}`;
   const caps = `report-status side-band-64k delete-refs ofs-delta agent=forge/1.0 object-format=sha1`;
   if (advertise) {
-    if (v2 && service === 'git-upload-pack') return Buffer.concat(['version 2\n', 'agent=forge/1.0\n', 'ls-refs=unborn\n', 'fetch=shallow\n', 'object-format=sha1\n'].map(pkt).concat([flush]));
+    const advertiseKey = `advertise:${service}:${v2}`;
+    const cached = repo.packCache.get(advertiseKey);
+    if (cached) return cached;
+    if (v2 && service === 'git-upload-pack') {
+      const response = Buffer.concat(['version 2\n', 'agent=forge/1.0\n', 'ls-refs=unborn\n', 'fetch=shallow\n', 'object-format=sha1\n'].map(pkt).concat([flush]));
+      repo.packCache.set(advertiseKey, response);
+      return response;
+    }
     const lines = [pkt(`# service=${service}\n`), flush]; const entries = [...refs]; if (service === 'git-upload-pack' && refs.has(head)) entries.unshift(['HEAD', refs.get(head)]);
     if (!entries.length) entries.push(['capabilities^{}', ZERO]);
     entries.forEach(([ref, sha], i) => lines.push(pkt(`${sha} ${ref}${i === 0 ? '\0' + (service === 'git-receive-pack' ? caps : `side-band-64k shallow ofs-delta symref=HEAD:${head} agent=forge/1.0`) : ''}\n`)));
-    return Buffer.concat([...lines, flush]);
+    const response = Buffer.concat([...lines, flush]);
+    repo.packCache.set(advertiseKey, response);
+    return response;
   }
   if (service === 'git-receive-pack') {
     const p = packets(body), commands = p.lines.filter(Boolean).map(x => x.toString().split('\0')[0].trim().split(' '));
@@ -98,13 +107,18 @@ export function gitRequest(repo, service, advertise, v2, body) {
     }
     const report = Buffer.concat([...reports, flush]); return p.lines[0]?.toString().includes('side-band-64k') ? sideband(report) : report;
   }
+  const requestKey = `upload:${v2}:${body.toString('base64')}`;
+  const requestCached = repo.packCache.get(requestKey);
+  if (Buffer.isBuffer(requestCached)) return requestCached;
   const lines = allLines(body);
   if (lines.includes('command=ls-refs')) {
     const prefix = lines.filter(x => x.startsWith('ref-prefix ')).map(x => x.slice(11)); const out = [];
     const emit = (ref, oid, extra = '') => { if (!prefix.length || prefix.some(p => ref.startsWith(p))) out.push(pkt(`${oid} ${ref}${extra}\n`)); };
     if (refs.has(head)) emit('HEAD', refs.get(head), lines.includes('symrefs') ? ` symref-target:${head}` : ''); else if (lines.includes('unborn')) emit('HEAD', 'unborn', ` symref-target:${head}`);
     for (const [ref, oid] of refs) { let extra = ''; if (lines.includes('peel') && store.get(oid).type === 'tag') extra = ` peeled:${/^object (\w+)/m.exec(store.get(oid).data.toString())[1]}`; emit(ref, oid, extra); }
-    return Buffer.concat([...out, flush]);
+    const response = Buffer.concat([...out, flush]);
+    repo.packCache.set(requestKey, response);
+    return response;
   }
   const wants = lines.filter(x => x.startsWith('want ')).map(x => x.split(' ')[1]);
   const haves = lines.filter(x => x.startsWith('have ')).map(x => x.slice(5)).filter(id => store.map.has(id));
@@ -117,10 +131,14 @@ export function gitRequest(repo, service, advertise, v2, body) {
     const held = store.closure(haves, Infinity, new Set(), shallow).ids;
     const walk = store.closure(wants, depth);
     for (const id of held) walk.ids.delete(id);
-    result = { pack: store.pack(walk.ids), boundaries: [...walk.boundaries] };
+    result = { pack: store.pack(walk.ids), boundaries: [...walk.boundaries], responses: new Map() };
     if (repo.packCache.size > 16) repo.packCache.clear();
     repo.packCache.set(key, result);
   }
+  if (!result.responses) result.responses = new Map();
+  const responseKey = JSON.stringify([v2, lines.includes('command=fetch'), lines.some(x => x.includes('side-band-64k')), lines.some(x => x.startsWith('deepen '))]);
+  const cached = result.responses.get(responseKey);
+  if (cached) return cached;
   const sections = [];
   if (v2 || lines.includes('command=fetch')) {
     if (result.boundaries.length || lines.some(x => x.startsWith('shallow '))) { sections.push(pkt('shallow-info\n')); for (const id of result.boundaries) sections.push(pkt(`shallow ${id}\n`)); for (const l of lines.filter(x => x.startsWith('shallow '))) if (!result.boundaries.includes(l.slice(8))) sections.push(pkt(`unshallow ${l.slice(8)}\n`)); sections.push(delim); }
@@ -130,5 +148,8 @@ export function gitRequest(repo, service, advertise, v2, body) {
     sections.push(pkt('NAK\n'));
     if (lines.some(x => x.includes('side-band-64k'))) sections.push(sideband(result.pack)); else sections.push(result.pack);
   }
-  return Buffer.concat(sections);
+  const response = Buffer.concat(sections);
+  result.responses.set(responseKey, response);
+  repo.packCache.set(requestKey, response);
+  return response;
 }
