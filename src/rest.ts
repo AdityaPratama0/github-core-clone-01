@@ -3,7 +3,7 @@ import { fail } from './store.ts';
 export function rest(forge, method, url, body) {
   const parts = url.pathname.replace(/^\/api\/v3\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
   const path = parts.join('/');
-  const response = (status, body, headers = {}, raw) => ({ status, body, headers, raw });
+  const response = (status, body, headers = {}) => ({ status, body, headers });
   const ok = b => response(200, b);
   const created = b => response(201, b);
   const page = items => {
@@ -26,7 +26,7 @@ export function rest(forge, method, url, body) {
   if (parts.length === 3) {
     if (method === 'GET') return ok(forge.repoJson(r));
     if (method === 'DELETE') { forge.repos.delete(name); forge.nodes.delete(r.node_id); return response(204, null); }
-    if (method === 'PATCH') { if (typeof body.description === 'string') r.description = body.description; if (body.default_branch) { if (!forge.tip(r, body.default_branch)) fail(422, 'Unknown branch'); r.default_branch = body.default_branch; r.packCache.clear(); } return ok(forge.repoJson(r)); }
+    if (method === 'PATCH') { if (typeof body.description === 'string') r.description = body.description; if (body.default_branch) { if (!forge.tip(r, body.default_branch)) fail(422, 'Unknown branch'); r.default_branch = body.default_branch; } return ok(forge.repoJson(r)); }
   }
   if (area === 'contents') {
     const file = parts.slice(4).join('/');
@@ -43,10 +43,10 @@ export function rest(forge, method, url, body) {
   if (area === 'git') {
     const ref = parts.slice(5).join('/'), fullRef = ref.startsWith('refs/') ? ref : `refs/${ref}`;
     if (['ref', 'refs'].includes(value)) {
-      if (method === 'POST' && parts.length === 5) { if (!/^refs\/(heads|tags)\/.+/.test(body.ref || '') || !r.objects.map.has(body.sha) || r.refs.has(body.ref)) fail(422, 'Invalid reference'); r.refs.set(body.ref, body.sha); r.packCache.clear(); return created({ ref: body.ref, object: { sha: body.sha, type: r.objects.get(body.sha).type } }); }
+      if (method === 'POST' && parts.length === 5) { if (!/^refs\/(heads|tags)\/.+/.test(body.ref || '') || !r.objects.map.has(body.sha) || r.refs.has(body.ref)) fail(422, 'Invalid reference'); r.refs.set(body.ref, body.sha); return created({ ref: body.ref, object: { sha: body.sha, type: r.objects.get(body.sha).type } }); }
       if (method === 'GET') { const sha = r.refs.get(fullRef); if (!sha) fail(404, 'Not Found'); return ok({ ref: fullRef, object: { sha, type: r.objects.get(sha).type } }); }
-      if (method === 'DELETE') { if (!r.refs.delete(fullRef)) fail(404, 'Not Found'); r.packCache.clear(); return response(204, null); }
-      if (method === 'PATCH') { const old = r.refs.get(fullRef); if (!old) fail(404, 'Not Found'); if (!r.objects.map.has(body.sha) || !r.objects.ancestor(old, body.sha)) fail(422, 'Non-fast-forward'); r.refs.set(fullRef, body.sha); r.packCache.clear(); return ok({ ref: fullRef, object: { sha: body.sha } }); }
+      if (method === 'DELETE') { if (!r.refs.delete(fullRef)) fail(404, 'Not Found'); return response(204, null); }
+      if (method === 'PATCH') { const old = r.refs.get(fullRef); if (!old) fail(404, 'Not Found'); if (!r.objects.map.has(body.sha) || !r.objects.ancestor(old, body.sha)) fail(422, 'Non-fast-forward'); r.refs.set(fullRef, body.sha); return ok({ ref: fullRef, object: { sha: body.sha } }); }
     }
   }
   if (area === 'labels') {
@@ -60,8 +60,8 @@ export function rest(forge, method, url, body) {
     } else {
       const x = forge.issue(r, value);
       if (extra === 'comments') { if (method === 'POST') return created(forge.comment(x, body)); if (method === 'GET') return page(x.comments); }
-      if (!extra && method === 'GET') return response(200, null, {}, forge.issueJsonString(x));
-      if (!extra && method === 'PATCH') { for (const key of ['title', 'body']) if (typeof body[key] === 'string') x[key] = body[key]; if (body.state) { if (!['open', 'closed'].includes(body.state)) fail(422, 'Invalid state'); x.state = body.state; } delete x._json; delete x._jsonBuffer; return ok(forge.issueJson(x)); }
+      if (!extra && method === 'GET') return ok(forge.issueJson(x));
+      if (!extra && method === 'PATCH') { for (const key of ['title', 'body']) if (typeof body[key] === 'string') x[key] = body[key]; if (body.state) { if (!['open', 'closed'].includes(body.state)) fail(422, 'Invalid state'); x.state = body.state; } return ok(forge.issueJson(x)); }
     }
   }
   if (area === 'pulls') {
