@@ -1,4 +1,4 @@
-import { buildSchema, graphql } from '../vendor/graphql.mjs';
+import { buildSchema, graphql } from '../vendor/graphql.min.mjs';
 
 const schema = buildSchema(`
   interface Node { id: ID! }
